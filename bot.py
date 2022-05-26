@@ -1,62 +1,54 @@
-# Work with Python 3.6
+# bot.py
+import os
 import random
-import asyncio
-import aiohttp
-import json
-from discord.ext.commands import Bot
 
-BOT_PREFIX = ("?", "!")
-TOKEN = "Nzk2ODI5NTM1NjQzMjM4NDAy.GgaSaI.po3n6osJQZ-cfQyPRT6iSHQN5C9gLkT2vSlK8I"  # Get at discordapp.com/developers/applications/me
+import discord
+from discord.ext import commands
+from dotenv import load_dotenv
 
-client = Bot(command_prefix=BOT_PREFIX)
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+
+bot = commands.Bot(command_prefix='!')
 
 
-@client.command(name='8ball',
-                description="Answers a yes/no question.",
-                brief="Answers from the beyond.",
-                aliases=['eight_ball', 'eightball', '8-ball'],
-                pass_context=True)
-async def eight_ball(context):
-    possible_responses = [
-        'That is a resounding no',
-        'It is not looking likely',
-        'Too hard to tell',
-        'It is quite possible',
-        'Definitely',
+@bot.command(name='99', help='Responds with a random quote from Brooklyn 99')
+async def nine_nine(ctx):
+    brooklyn_99_quotes = [
+        'I\'m the human form of the 💯 emoji.',
+        'Bingpot!',
+        (
+            'Cool. Cool cool cool cool cool cool cool, '
+            'no doubt no doubt no doubt no doubt.'
+        ),
     ]
-    await context.send(random.choice(possible_responses) + ", " + context.message.author.mention)
+    response = random.choice(brooklyn_99_quotes)
+    await ctx.send(response)
 
 
-@client.command()
-async def square(number):
-    squared_value = int(number) * int(number)
-    await client.say(str(number) + " squared is " + str(squared_value))
+@bot.command(name='roll_dice', help='Simulates rolling dice.')
+async def roll(ctx, number_of_dice: int, number_of_sides: int):
+    dice = [
+        str(random.choice(range(1, number_of_sides + 1)))
+        for _ in range(number_of_dice)
+    ]
+    await ctx.send(', '.join(dice))
 
 
-@client.event
-async def on_ready():
-    await client.change_presence()
-    print("Logged in as " + client.user.name)
+@bot.command(name='create-channel')
+@commands.has_role('admin')
+async def create_channel(ctx, channel_name='real-python'):
+    guild = ctx.guild
+    existing_channel = discord.utils.get(guild.channels, name=channel_name)
+    if not existing_channel:
+        print(f'Creating a new channel: {channel_name}')
+        await guild.create_text_channel(channel_name)
 
 
-@client.command()
-async def bitcoin():
-    url = 'https://api.coindesk.com/v1/bpi/currentprice/BTC.json'
-    async with aiohttp.ClientSession() as session:  # Async HTTP request
-        raw_response = await session.get(url)
-        response = await raw_response.text()
-        response = json.loads(response)
-        await client.say("Bitcoin price is: $" + response['bpi']['USD']['rate'])
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.errors.CheckFailure):
+        await ctx.send('You do not have the correct role for this command.')
 
 
-async def list_servers():
-    await client.wait_until_ready()
-    while not client.is_closed:
-        print("Current servers:")
-        for server in client.servers:
-            print(server.name)
-        await asyncio.sleep(600)
-
-
-client.loop.create_task(list_servers())
-client.run(TOKEN)
+bot.run(TOKEN)
